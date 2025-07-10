@@ -47,10 +47,9 @@ int main(int argc, char** argv) {
     }
     FILE *fp = argv[idx] ? fopen(argv[idx], "r") : stdin;
     if (fp == NULL) {
-        printf(ANSI_COLOR_RED "Where the fuck is %s twin\n" ANSI_COLOR_RESET, argv[idx]);
+        printf(ANSI_COLOR_RED "Where the hell is %s twin\n" ANSI_COLOR_RESET, argv[idx]);
     }
     grape(fp, substring, flags);
-    printf("Hello, from c-project!\n");
 }
 
 void grape(FILE *fp, string substr, char flags) {
