@@ -3,21 +3,22 @@
 #include "rangelist.h"
 
 // Appends a range to a linked list
-void add(Range r, RangeList *n) {
+void add(Range r, RangeList *lst) {
     Node *new = malloc(sizeof(Node));
     new->range = r;
     new->next = NULL;
 
-    if (n->head == NULL) {
-        n->head = new;
+    if (lst->head == NULL) {
+        lst->head = new;
+        lst->len = 1;
         return;
     }
-    Node *temp = n->head;
+    Node *temp = lst->head;
     while (temp->next != NULL) {
         temp = temp->next;
     }
     temp->next = new;
-    
+    lst->len++;
 }
 
 // I LITERALLY FORGOR WHY WE'RE TAKING DOUBLE POINTER INSTEAD OF SINGLE
@@ -35,6 +36,7 @@ void clear(RangeList *list) {
     }
     // Reinitialization for safety and convenience reasons
     list->head = NULL;
+    list->len = 0;
 }
 
 // A handy display function I kept just in case

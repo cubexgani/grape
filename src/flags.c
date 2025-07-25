@@ -23,6 +23,9 @@ int parse_flags(unsigned char *flags, char *content) {
             case 'n':
                 *flags |= SHOW_LINE_NUM;
                 break;
+            case 'c':
+                *flags |= FIND_COUNT;
+                break;
             default:
                 printf(ANSI_COLOR_RED "Invalid option: %c\n" ANSI_COLOR_RESET, ch);
                 return -1;

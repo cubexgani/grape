@@ -13,6 +13,7 @@ typedef struct node_t {
 // A list of them range nodes
 typedef struct {
     Node *head;
+    int len;
 } RangeList;
 
 void add(Range, RangeList *);

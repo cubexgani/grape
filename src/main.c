@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
 
     char *substring = argv[idx++];
     if (substring == NULL) {
-        printf(WARNING("Usage: %s [-EFGi] pattern [filename]"), argv[0]);
+        printf(WARNING("Usage: %s [-cEFGin] pattern [filename]"), argv[0]);
         return 0;
     }
     FILE *fp = argv[idx] ? fopen(argv[idx], "r") : stdin;
@@ -61,10 +61,16 @@ void grape(FILE *fp, char *substr, unsigned char flags) {
 
 void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
     int lineNum = 0;
+    int findSum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
+    char dispCount = flags & FIND_COUNT;
+
     int sublen = strlen(substr);
+
     RangeList *ranges = malloc(sizeof(RangeList));
     ranges->head = NULL;
+    ranges->len = 0;
+    
     char line[400];
     while ((fgets(line, 400, fp)) != NULL) {
         // yes 400 is a reasonable limit, I know
@@ -102,18 +108,23 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
             add(rng, ranges);
         }
         // Print the current line with highlighting and all
-        int sts = displayFinds(line, ranges, flags, lineNum);
-        if (!sts) continue;
+        if (!dispCount) {
+            int sts = displayFinds(line, ranges, flags, lineNum);
+            if (!sts) continue;
+        }
+        findSum += ranges->len;
         // Empty the linked list before next line rolls in
         clear(ranges);
     }
+    if (dispCount) printf("Count: %d\n", findSum);
     free(ranges);
 }
 
 void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     regex_t compiled;
-    int extended = flags & EXTENDED_REGEX;
-    int ignorecase = flags & IGNORE_CASE;
+    char extended = flags & EXTENDED_REGEX;
+    char ignorecase = flags & IGNORE_CASE;
+    char dispCount = flags & FIND_COUNT;
     int perms = extended && ignorecase ? REG_EXTENDED | REG_ICASE : 
                 extended ? REG_EXTENDED : ignorecase ? REG_ICASE : 0;
     
@@ -121,15 +132,17 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     if (compErr) {
         char errbuf[100];
         regerror(compErr, &compiled, errbuf, sizeof(errbuf));
-        printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RED, errbuf);
+        printf(ERROR("%s"), errbuf);
         return;
     }
     long subexprs = compiled.re_nsub;
 
     RangeList *ranges = malloc(sizeof(RangeList));
     ranges->head = NULL;
+    ranges->len = 0;
     char line[400];
     int lineNum = 0;
+    int findSum = 0;
     while(fgets(line, 400, fp) != NULL) {
         char *lptr = line;
         // Ok this one is more of a char pointer than a char *sooo
@@ -146,25 +159,27 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
             if (matchSts == REG_NOMATCH) break;
 
             // offset of range wrt char *scope lptr
-            int currOff = 0;
-            for (long i = 0; i <= subexprs; i++) {
-                Range r;
-                
-                r.startInd = finOff + matches[i].rm_so;
-                r.endInd = finOff + matches[i].rm_eo - 1;
-                add(r, ranges);
-                currOff = matches[i].rm_eo;
-            }
+            int currOff;
+            Range r;
+            
+            r.startInd = finOff + matches[0].rm_so;
+            r.endInd = finOff + matches[0].rm_eo - 1;
+            add(r, ranges);
+            currOff = matches[0].rm_eo;
             lptr = lptr + currOff;
             finOff += currOff;
             // well now the indices are in sorted order
         }
-        int sts = displayFinds(line, ranges, flags, lineNum);
-        if (!sts) continue;
+        if (!dispCount) {
+            int sts = displayFinds(line, ranges, flags, lineNum);
+            if (!sts) continue;
+        }
+        
+        findSum += ranges->len;
         clear(ranges);
 
     }
-    
+    if (dispCount) printf("Count: %d\n", findSum);
     free(ranges);
     regfree(&compiled);
 }
