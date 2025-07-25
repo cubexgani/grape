@@ -1,31 +1,24 @@
 #include <stdio.h>
 #include <ctype.h>
-#include "colors.h"
+#include "../include/colors.h"
 #include <string.h>
 #include <stdlib.h>
-#include "rangelist.h"
+#include "../include/rangelist.h"
 #include <regex.h>
-#define string char*
+#include "../include/flags.h"
+#include "../include/textformat.h"
 
-enum FLAGS {
-    FIXED =             1 << 0,
-    BASIC_REGEX =       1 << 1,
-    EXTENDED_REGEX =    1 << 2,
-    IGNORE_CASE =       1 << 3
-};
+#define ERROR(str) (ANSI_COLOR_RED str ANSI_COLOR_RESET "\n")
+#define WARNING(str) (ANSI_COLOR_YELLOW str ANSI_COLOR_RESET "\n")
 
-
-void grape(FILE *, string, char);
-void grape_fixed(FILE *, string, char);
-void grape_regex(FILE *, string, char);
-int parse_flags(char *, string);
-int displayFinds(string, RangeList *);
-void warning(string);
-void error(string);
+void grape(FILE *, char *, unsigned char);
+void grape_fixed(FILE *, char *, unsigned char);
+void grape_regex(FILE *, char *, unsigned char);
+int displayFinds(char *, RangeList *, unsigned char, int);
 
 int main(int argc, char** argv) {
     // An 8 (effectively 7) bit character for storing flags as bits
-    char flags;
+    unsigned char flags;
     int idx = 1;
     // Remember kids, argv[argc] == NULL.
     // And the number of flags in input are variable.
@@ -40,23 +33,23 @@ int main(int argc, char** argv) {
         if (status == -1) return 0;
     }
 
-    string substring = argv[idx++];
+    char *substring = argv[idx++];
     if (substring == NULL) {
-        printf(ANSI_COLOR_YELLOW "Usage: %s [-EFGi] pattern [filename]" ANSI_COLOR_RESET "\n", argv[0]);
+        printf(WARNING("Usage: %s [-EFGi] pattern [filename]"), argv[0]);
         return 0;
     }
     FILE *fp = argv[idx] ? fopen(argv[idx], "r") : stdin;
     if (fp == NULL) {
-        printf(ANSI_COLOR_RED "Where the hell is %s twin\n" ANSI_COLOR_RESET, argv[idx]);
+        printf(ERROR("Where the hell is %s twin"), argv[idx]);
     }
     grape(fp, substring, flags);
 }
 
-void grape(FILE *fp, string substr, char flags) {
+void grape(FILE *fp, char *substr, unsigned char flags) {
     char fixed = flags & FIXED;
     char regex = flags & BASIC_REGEX;
     if (fixed && regex) {
-        error("2 conflicting options set at once");
+        printf(ERROR("2 conflicting options set at once"));
     }
     else if (fixed) {
         grape_fixed(fp, substr, flags);
@@ -66,7 +59,8 @@ void grape(FILE *fp, string substr, char flags) {
     }
 }
 
-void grape_fixed(FILE *fp, string substr, char flags) {
+void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
+    int lineNum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
     int sublen = strlen(substr);
     RangeList *ranges = malloc(sizeof(RangeList));
@@ -76,6 +70,7 @@ void grape_fixed(FILE *fp, string substr, char flags) {
         // yes 400 is a reasonable limit, I know
         int sind = 0, eind = 0, currInd = 0;
         Range r;
+        lineNum++;
         // start and end indices of substring, and current index in substring
         int i;
         for (i = 0; line[i] != '\0'; i++) {
@@ -107,7 +102,7 @@ void grape_fixed(FILE *fp, string substr, char flags) {
             add(rng, ranges);
         }
         // Print the current line with highlighting and all
-        int sts = displayFinds(line, ranges);
+        int sts = displayFinds(line, ranges, flags, lineNum);
         if (!sts) continue;
         // Empty the linked list before next line rolls in
         clear(ranges);
@@ -115,7 +110,7 @@ void grape_fixed(FILE *fp, string substr, char flags) {
     free(ranges);
 }
 
-void grape_regex(FILE *fp, string toMatch, char flags) {
+void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     regex_t compiled;
     int extended = flags & EXTENDED_REGEX;
     int ignorecase = flags & IGNORE_CASE;
@@ -134,21 +129,23 @@ void grape_regex(FILE *fp, string toMatch, char flags) {
     RangeList *ranges = malloc(sizeof(RangeList));
     ranges->head = NULL;
     char line[400];
+    int lineNum = 0;
     while(fgets(line, 400, fp) != NULL) {
         char *lptr = line;
-        // Ok this one is more of a char pointer than a string sooo
+        // Ok this one is more of a char pointer than a char *sooo
         
         int matchSts = 0; //assuming no match error occurs
         
         // final offset of range wrt beginning of line
         int finOff = 0;
+        lineNum++;
         while(*lptr != '\0') {
             regmatch_t matches[subexprs + 1];
-            // execute matching on current string scope
+            // execute matching on current char *scope
             matchSts = regexec(&compiled, lptr, subexprs + 1, matches, 0);
             if (matchSts == REG_NOMATCH) break;
 
-            // offset of range wrt string scope lptr
+            // offset of range wrt char *scope lptr
             int currOff = 0;
             for (long i = 0; i <= subexprs; i++) {
                 Range r;
@@ -162,7 +159,7 @@ void grape_regex(FILE *fp, string toMatch, char flags) {
             finOff += currOff;
             // well now the indices are in sorted order
         }
-        int sts = displayFinds(line, ranges);
+        int sts = displayFinds(line, ranges, flags, lineNum);
         if (!sts) continue;
         clear(ranges);
 
@@ -172,8 +169,9 @@ void grape_regex(FILE *fp, string toMatch, char flags) {
     regfree(&compiled);
 }
 
-int displayFinds(string line, RangeList *ranges) {
+int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum) {
     if (ranges->head == NULL) return 0;
+    if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
     char *line_temp = line;
     int pos = 0;
     Node *temp = ranges->head;
@@ -182,7 +180,7 @@ int displayFinds(string line, RangeList *ranges) {
         Range curr = temp->range;
         int start = curr.startInd, end = curr.endInd, plaintextDistance = start - pos;
 
-        printf("%.*s" ANSI_COLOR_MAGENTA "%.*s" ANSI_COLOR_RESET, 
+        printf("%.*s" ANSI_COLOR_MAGENTA BOLD UNDERLINE "%.*s" ANSI_COLOR_RESET, 
             plaintextDistance, line_temp, end - start + 1, line_temp + plaintextDistance);
         pos = end + 1;
         line_temp = line + pos;
@@ -192,38 +190,4 @@ int displayFinds(string line, RangeList *ranges) {
     while(*line_temp != '\0') line_temp++;
     if (*(line_temp - 1) != '\n') printf("\n");
     return 1;
-}
-
-int parse_flags(char *flags, string content) {
-    // I deliberately didnt use string for flags bcs its purpose is entirely different.
-    
-    for (int i = 0; content[i] != '\0'; i++) {
-        char ch = content[i];
-        switch(ch) {
-            case 'F':
-                *flags |= FIXED;
-                break;
-            case 'G':
-                *flags |= BASIC_REGEX;
-                break;
-            case 'E':
-                *flags |= EXTENDED_REGEX;
-                break;
-            case 'i':
-                *flags |= IGNORE_CASE;
-                break;
-            default:
-                printf(ANSI_COLOR_RED "Invalid option: %c\n" ANSI_COLOR_RESET, ch);
-                return -1;
-        }
-    }
-    return 0;
-}
-
-
-void warning(string warnstr) {
-    printf(ANSI_COLOR_YELLOW "%s\n" ANSI_COLOR_RESET, warnstr);
-}
-void error(string errstr) {
-    printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, errstr);
 }
