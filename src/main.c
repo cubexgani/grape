@@ -7,9 +7,7 @@
 #include <regex.h>
 #include "../include/flags.h"
 #include "../include/textformat.h"
-
-#define ERROR(str) (ANSI_COLOR_RED str ANSI_COLOR_RESET "\n")
-#define WARNING(str) (ANSI_COLOR_YELLOW str ANSI_COLOR_RESET "\n")
+#include "../include/logging.h"
 
 void grape(FILE *, char *, unsigned char);
 void grape_fixed(FILE *, char *, unsigned char);
@@ -32,15 +30,20 @@ int main(int argc, char** argv) {
         int status = parse_flags(&flags, str + 1);
         if (status == -1) return 0;
     }
+    if (flags & HELP) {
+        printHelpText(flags);
+        return 0;
+    }
 
     char *substring = argv[idx++];
     if (substring == NULL) {
-        printf(WARNING("Usage: %s [-cEFGin] pattern [filename]"), argv[0]);
+        printHelpText(flags);
         return 0;
     }
     FILE *fp = argv[idx] ? fopen(argv[idx], "r") : stdin;
     if (fp == NULL) {
         printf(ERROR("Where the hell is %s twin"), argv[idx]);
+        return -1;
     }
     grape(fp, substring, flags);
 }
