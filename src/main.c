@@ -9,6 +9,22 @@
 #include "../include/textformat.h"
 #include "../include/logging.h"
 
+/* A macro for displaying the lines (matching or not matching depending upon the flag)
+or just not doing anything if we just want the find count */
+#define DISPLAY(lchar) \
+if (!dispCount) { \
+    if (invertMatch && ranges->head == NULL) { \
+        printf("%s", line); \
+        if (lchar != '\n') printf("\n"); \
+        continue; \
+    } \
+    else if (!invertMatch) { \
+        int sts = displayFinds(line, ranges, flags, lineNum); \
+        if (!sts) continue; \
+    } \
+}
+
+
 void grape(FILE *, char *, unsigned char);
 void grape_fixed(FILE *, char *, unsigned char);
 void grape_regex(FILE *, char *, unsigned char);
@@ -67,15 +83,17 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
     int findSum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
     char dispCount = flags & FIND_COUNT;
+    char invertMatch = flags & INVERT_MATCH;
 
     int sublen = strlen(substr);
-
+    
     RangeList *ranges = malloc(sizeof(RangeList));
     ranges->head = NULL;
     ranges->len = 0;
     
-    char line[400];
-    while ((fgets(line, 400, fp)) != NULL) {
+    // An 8kb buffer might be overkill, idk
+    char line[BUFSIZ];
+    while ((fgets(line, BUFSIZ, fp)) != NULL) {
         // yes 400 is a reasonable limit, I know
         int sind = 0, eind = 0, currInd = 0;
         Range r;
@@ -91,7 +109,6 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
             if (substr[currInd] == '\0') {
                 eind = i - 1;
                 sind = eind - sublen + 1;
-                // Prolly gonna use either the above or the below one
                 r.startInd = sind;
                 r.endInd = eind;
                 add(r, ranges);
@@ -110,11 +127,9 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
             Range rng = {i - 1 - sublen, i - 1};
             add(rng, ranges);
         }
-        // Print the current line with highlighting and all
-        if (!dispCount) {
-            int sts = displayFinds(line, ranges, flags, lineNum);
-            if (!sts) continue;
-        }
+        
+        DISPLAY(line[i - 1]);
+
         findSum += ranges->len;
         // Empty the linked list before next line rolls in
         clear(ranges);
@@ -125,9 +140,11 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
 
 void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     regex_t compiled;
+
     char extended = flags & EXTENDED_REGEX;
     char ignorecase = flags & IGNORE_CASE;
     char dispCount = flags & FIND_COUNT;
+    char invertMatch = flags & INVERT_MATCH;
     int perms = extended && ignorecase ? REG_EXTENDED | REG_ICASE : 
                 extended ? REG_EXTENDED : ignorecase ? REG_ICASE : 0;
     
@@ -143,12 +160,11 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     RangeList *ranges = malloc(sizeof(RangeList));
     ranges->head = NULL;
     ranges->len = 0;
-    char line[400];
+    char line[BUFSIZ];
     int lineNum = 0;
     int findSum = 0;
-    while(fgets(line, 400, fp) != NULL) {
+    while(fgets(line, BUFSIZ, fp) != NULL) {
         char *lptr = line;
-        // Ok this one is more of a char pointer than a char *sooo
         
         int matchSts = 0; //assuming no match error occurs
         
@@ -173,10 +189,9 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
             finOff += currOff;
             // well now the indices are in sorted order
         }
-        if (!dispCount) {
-            int sts = displayFinds(line, ranges, flags, lineNum);
-            if (!sts) continue;
-        }
+        
+        while (*lptr != '\0') lptr++;
+        DISPLAY(*(lptr - 1));
         
         findSum += ranges->len;
         clear(ranges);

@@ -19,6 +19,7 @@ const struct flagTable lookup[] = {
     {'i', "ignore-case", "Ignore case while finding matches", IGNORE_CASE},
     {'n', "line-number", "Shows line number of each line where the regex matches", SHOW_LINE_NUM},
     {'h', "help", "Shows this help text", HELP},
+    {'v', "invert-match", "Print only the non-matching lines", INVERT_MATCH}
 };
 
 const long tableSize = sizeof(lookup) / sizeof(struct flagTable);
@@ -50,6 +51,9 @@ int parse_flags(unsigned char *flags, char *content) {
                 break;
             case 'h':
                 *flags |= HELP;
+                break;
+            case 'v':
+                *flags |= INVERT_MATCH;
                 break;
             default:
                 printf(ERROR("Invalid option: %c"), ch);

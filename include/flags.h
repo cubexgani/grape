@@ -6,6 +6,7 @@ enum FLAGS {
     SHOW_LINE_NUM =     1 << 4,
     FIND_COUNT =        1 << 5,
     HELP =              1 << 6,
+    INVERT_MATCH =      1 << 7,
 };
 
 struct flagTable;
