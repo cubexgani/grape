@@ -14,21 +14,23 @@ or just not doing anything if we just want the find count */
 #define DISPLAY(lchar) \
 if (!dispCount) { \
     if (invertMatch && ranges->head == NULL) { \
+        if (showFileName) \
+            printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName); \
         printf("%s", line); \
         if (lchar != '\n') printf("\n"); \
         continue; \
     } \
     else if (!invertMatch) { \
-        int sts = displayFinds(line, ranges, flags, lineNum); \
+        int sts = displayFinds(line, ranges, flags, lineNum, showFileName, fileName); \
         if (!sts) continue; \
     } \
 }
 
 
-void grape(FILE *, char *, unsigned char);
-void grape_fixed(FILE *, char *, unsigned char);
-void grape_regex(FILE *, char *, unsigned char);
-int displayFinds(char *, RangeList *, unsigned char, int);
+int grape(char **, int, char *, unsigned char);
+int grape_fixed(FILE *, char *, unsigned char, char, char *);
+int grape_regex(FILE *, char *, unsigned char, char, char *);
+int displayFinds(char *, RangeList *, unsigned char, int, char, char *);
 
 int main(int argc, char** argv) {
     // An 8 (effectively 7) bit character for storing flags as bits
@@ -39,6 +41,7 @@ int main(int argc, char** argv) {
     for (; idx < argc; idx++) {
         char *str = argv[idx];
         if (str[0] != '-') break;   // no more flags
+        if (str[0] == '-' && str[1] == '\0') break;     //substring -
         if (str[1] == '-' && str[2] == '\0') {
             idx++;
             break;   // end of flags --
@@ -61,24 +64,47 @@ int main(int argc, char** argv) {
         printf(ERROR("Where the hell is %s twin"), argv[idx]);
         return -1;
     }
-    grape(fp, substring, flags);
+    grape(argv + idx, argc - idx, substring, flags);
 }
 
-void grape(FILE *fp, char *substr, unsigned char flags) {
+int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
     char fixed = flags & FIXED;
     char regex = flags & BASIC_REGEX;
     if (fixed && regex) {
         printf(ERROR("2 conflicting options set at once"));
+        return 1;
     }
-    else if (fixed) {
-        grape_fixed(fp, substr, flags);
+    int (*grapeFn)(FILE *, char *, unsigned char, char, char *) = fixed ? grape_fixed : grape_regex;
+    // For some reason I'm suddenly thinking a lot about memory usage
+    char showFileName = filesLen <= 1 ? 0 : 1;
+    if (filesLen == 0) {
+        FILE *fp = stdin;
+        grapeFn(fp, substr, flags, showFileName, "(standard input)");
+        return 0;
     }
-    else {
-        grape_regex(fp, substr, flags);
+    for (int i = 0; i < filesLen; i++) {
+        FILE *fp;
+        char *filename;
+
+        // For more expressive code, I had to include the != 0 part
+        if (strcmp(files[i], "-") != 0) {
+            fp = fopen(files[i], "r");
+            filename = files[i];
+        }
+        else {
+            fp = stdin;
+            filename = "(standard input)";
+        }
+        if (fp == NULL) {
+            printf(ERROR("Where the hell is %s twin"), files[i]);
+            return -1;
+        }
+        grapeFn(fp, substr, flags, showFileName, filename);
     }
+    return 0;
 }
 
-void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
+int grape_fixed(FILE *fp, char *substr, unsigned char flags, char showFileName, char *fileName) {
     int lineNum = 0;
     int findSum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
@@ -136,9 +162,10 @@ void grape_fixed(FILE *fp, char *substr, unsigned char flags) {
     }
     if (dispCount) printf("Count: %d\n", findSum);
     free(ranges);
+    return 0;
 }
 
-void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
+int grape_regex(FILE *fp, char *toMatch, unsigned char flags, char showFileName, char *fileName) {
     regex_t compiled;
 
     char extended = flags & EXTENDED_REGEX;
@@ -153,7 +180,7 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
         char errbuf[100];
         regerror(compErr, &compiled, errbuf, sizeof(errbuf));
         printf(ERROR("%s"), errbuf);
-        return;
+        return 1;
     }
     long subexprs = compiled.re_nsub;
 
@@ -200,10 +227,12 @@ void grape_regex(FILE *fp, char *toMatch, unsigned char flags) {
     if (dispCount) printf("Count: %d\n", findSum);
     free(ranges);
     regfree(&compiled);
+    return 0;
 }
 
-int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum) {
+int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum, char showFilename, char *fileName) {
     if (ranges->head == NULL) return 0;
+    if (showFilename) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
     if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
     char *line_temp = line;
     int pos = 0;
