@@ -17,6 +17,8 @@ if (!dispCount) { \
         if (showFileName) \
             printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName); \
         printf("%s", line); \
+        /* If the penultimate character of the line isn't a newline character, print one.
+        The ultimate character here is null character */ \
         if (lchar != '\n') printf("\n"); \
         continue; \
     } \
@@ -26,10 +28,12 @@ if (!dispCount) { \
     } \
 }
 
+// Can't really decide between whether this should be a macro or a function lol
+#define SHOWFILE if (showFileName) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
 
 int grape(char **, int, char *, unsigned char);
-int grape_fixed(FILE *, char *, unsigned char, char, char *);
-int grape_regex(FILE *, char *, unsigned char, char, char *);
+int grapeFixed(FILE *, char *, unsigned char, char, char *);
+int grapeRegex(FILE *, char *, unsigned char, char, char *);
 int displayFinds(char *, RangeList *, unsigned char, int, char, char *);
 
 int main(int argc, char** argv) {
@@ -74,7 +78,8 @@ int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
         printf(ERROR("2 conflicting options set at once"));
         return 1;
     }
-    int (*grapeFn)(FILE *, char *, unsigned char, char, char *) = fixed ? grape_fixed : grape_regex;
+    // The type of graping depends on the flag ofc
+    int (*grapeFn)(FILE *, char *, unsigned char, char, char *) = fixed ? grapeFixed : grapeRegex;
     // For some reason I'm suddenly thinking a lot about memory usage
     char showFileName = filesLen <= 1 ? 0 : 1;
     if (filesLen == 0) {
@@ -97,14 +102,14 @@ int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
         }
         if (fp == NULL) {
             printf(ERROR("Where the hell is %s twin"), files[i]);
-            return -1;
+            return 1;
         }
         grapeFn(fp, substr, flags, showFileName, filename);
     }
     return 0;
 }
 
-int grape_fixed(FILE *fp, char *substr, unsigned char flags, char showFileName, char *fileName) {
+int grapeFixed(FILE *fp, char *substr, unsigned char flags, char showFileName, char *fileName) {
     int lineNum = 0;
     int findSum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
@@ -160,12 +165,15 @@ int grape_fixed(FILE *fp, char *substr, unsigned char flags, char showFileName, 
         // Empty the linked list before next line rolls in
         clear(ranges);
     }
-    if (dispCount) printf("Count: %d\n", findSum);
+    if (dispCount) {
+        SHOWFILE
+        printf("Count: %d\n", findSum);
+    }
     free(ranges);
     return 0;
 }
 
-int grape_regex(FILE *fp, char *toMatch, unsigned char flags, char showFileName, char *fileName) {
+int grapeRegex(FILE *fp, char *toMatch, unsigned char flags, char showFileName, char *fileName) {
     regex_t compiled;
 
     char extended = flags & EXTENDED_REGEX;
@@ -224,15 +232,19 @@ int grape_regex(FILE *fp, char *toMatch, unsigned char flags, char showFileName,
         clear(ranges);
 
     }
-    if (dispCount) printf("Count: %d\n", findSum);
+    if (dispCount) {
+        SHOWFILE
+        printf("Count: %d\n", findSum);
+    }
     free(ranges);
     regfree(&compiled);
     return 0;
 }
 
-int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum, char showFilename, char *fileName) {
+int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum, 
+    char showFileName, char *fileName) {
     if (ranges->head == NULL) return 0;
-    if (showFilename) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
+    SHOWFILE
     if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
     char *line_temp = line;
     int pos = 0;
@@ -249,7 +261,8 @@ int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum
         temp = temp->next;
     }
     printf("%s", line_temp);
+    // Seek to EOL
     while(*line_temp != '\0') line_temp++;
-    if (*(line_temp - 1) != '\n') printf("\n");
+    if (*(line_temp - 1) != '\n') printf("\n");     // Print newline if there's no newline in original line
     return 1;
 }

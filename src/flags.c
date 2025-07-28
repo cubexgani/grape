@@ -30,6 +30,7 @@ int parse_flags(unsigned char *flags, char *content) {
     // Othewise, a shorthand flag
     for (int i = 0; content[i] != '\0'; i++) {
         char ch = content[i];
+        // Switch case is like a hashmap, better than a loop over the entire table sooooo
         switch(ch) {
             case 'F':
                 *flags |= FIXED;
@@ -57,22 +58,24 @@ int parse_flags(unsigned char *flags, char *content) {
                 break;
             default:
                 printf(ERROR("Invalid option: %c"), ch);
-                return -1;
+                return 1;
         }
     }
     return 0;
 }
 
 void printHelpText(unsigned char flags) {
+    char warning = !(flags & HELP);
     //First, the usage
-    if (!(flags & HELP)) printf(ANSI_COLOR_YELLOW);
+    if (warning) printf(ANSI_COLOR_YELLOW);
     printf("Usage: grape -[");
     for (int i = 0; i < tableSize; i++) {
         printf("%c", lookup[i].shorthand);
     }
-    printf("]... PATTERN FILE\n");
+    printf("]... PATTERN [FILES]...\n");
 
-    if (!(flags & HELP)) {
+    // Gatekeeping the option details
+    if (warning) {
         printf("Use --help or -h to learn more.\n");
         return;
     }
@@ -88,11 +91,12 @@ void printHelpText(unsigned char flags) {
 
 int parseLongFlags(unsigned char *flags, char *content) {
     for (int i = 0; i < tableSize; i++) {
+        // If content equals any of the longhands
         if (!strcmp(content, lookup[i].longhand)) {
             *flags |= lookup[i].value;
             return 0;
         }
     }
     printf(ERROR("Invalid option: %s"), content);
-    return -1;
+    return 1;
 }
