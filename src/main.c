@@ -9,36 +9,39 @@
 #include "../include/textformat.h"
 #include "../include/logging.h"
 
+// Can't really decide between whether this should be a macro or a function lol
+#define SHOWFILE if (showFileName) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
+#define SHOWLINE if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
+
 /* A macro for displaying the lines (matching or not matching depending upon the flag)
 or just not doing anything if we just want the find count */
 #define DISPLAY(lchar) \
 if (!dispCount) { \
     if (invertMatch && ranges->head == NULL) { \
-        if (showFileName) \
-            printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName); \
-        printf("%s", line); \
-        /* If the penultimate character of the line isn't a newline character, print one.
-        The ultimate character here is null character */ \
-        if (lchar != '\n') printf("\n"); \
+        displayInvert(line, lineNum, showFileName, fileName); \
         continue; \
     } \
     else if (!invertMatch) { \
-        int sts = displayFinds(line, ranges, flags, lineNum, showFileName, fileName); \
-        if (!sts) continue; \
+        int errsts = flags & ONLY_MATCHES ? \
+        displayFinds(line, ranges, lineNum, showFileName, fileName) : \
+        displayFindLines(line, ranges, lineNum, showFileName, fileName); \
+        if (errsts) continue; \
     } \
 }
 
-// Can't really decide between whether this should be a macro or a function lol
-#define SHOWFILE if (showFileName) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
 
-int grape(char **, int, char *, unsigned char);
-int grapeFixed(FILE *, char *, unsigned char, char, char *);
-int grapeRegex(FILE *, char *, unsigned char, char, char *);
-int displayFinds(char *, RangeList *, unsigned char, int, char, char *);
+int grape(char **, int, char *);
+int grapeFixed(FILE *, char *, char, char *);
+int grapeRegex(FILE *, char *, char, char *);
+int displayFindLines(char *, RangeList *, int, char, char *);
+int displayFinds(char *, RangeList *, int, char, char *);
+int displayInvert(char *, int, char, char *);
+
+unsigned short flags;
 
 int main(int argc, char** argv) {
     // An 8 (effectively 7) bit character for storing flags as bits
-    unsigned char flags;
+    // unsigned char flags;
     int idx = 1;
     // Remember kids, argv[argc] == NULL.
     // And the number of flags in input are variable.
@@ -68,10 +71,10 @@ int main(int argc, char** argv) {
         printf(ERROR("Where the hell is %s twin"), argv[idx]);
         return -1;
     }
-    grape(argv + idx, argc - idx, substring, flags);
+    grape(argv + idx, argc - idx, substring);
 }
 
-int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
+int grape(char **files, int filesLen, char *substr) {
     char fixed = flags & FIXED;
     char regex = flags & BASIC_REGEX;
     if (fixed && regex) {
@@ -79,12 +82,12 @@ int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
         return 1;
     }
     // The type of graping depends on the flag ofc
-    int (*grapeFn)(FILE *, char *, unsigned char, char, char *) = fixed ? grapeFixed : grapeRegex;
+    int (*grapeFn)(FILE *, char *, char, char *) = fixed ? grapeFixed : grapeRegex;
     // For some reason I'm suddenly thinking a lot about memory usage
     char showFileName = filesLen <= 1 ? 0 : 1;
     if (filesLen == 0) {
         FILE *fp = stdin;
-        grapeFn(fp, substr, flags, showFileName, "(standard input)");
+        grapeFn(fp, substr, showFileName, "(standard input)");
         return 0;
     }
     for (int i = 0; i < filesLen; i++) {
@@ -104,12 +107,12 @@ int grape(char *files[], int filesLen, char *substr, unsigned char flags) {
             printf(ERROR("Where the hell is %s twin"), files[i]);
             return 1;
         }
-        grapeFn(fp, substr, flags, showFileName, filename);
+        grapeFn(fp, substr, showFileName, filename);
     }
     return 0;
 }
 
-int grapeFixed(FILE *fp, char *substr, unsigned char flags, char showFileName, char *fileName) {
+int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
     int lineNum = 0;
     int findSum = 0;
     char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
@@ -159,7 +162,7 @@ int grapeFixed(FILE *fp, char *substr, unsigned char flags, char showFileName, c
             add(rng, ranges);
         }
         
-        DISPLAY(line[i - 1]);
+        DISPLAY(line[i - 1])
 
         findSum += ranges->len;
         // Empty the linked list before next line rolls in
@@ -173,7 +176,7 @@ int grapeFixed(FILE *fp, char *substr, unsigned char flags, char showFileName, c
     return 0;
 }
 
-int grapeRegex(FILE *fp, char *toMatch, unsigned char flags, char showFileName, char *fileName) {
+int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
     regex_t compiled;
 
     char extended = flags & EXTENDED_REGEX;
@@ -241,11 +244,11 @@ int grapeRegex(FILE *fp, char *toMatch, unsigned char flags, char showFileName, 
     return 0;
 }
 
-int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum, 
+int displayFindLines(char *line, RangeList *ranges, int lineNum, 
     char showFileName, char *fileName) {
-    if (ranges->head == NULL) return 0;
+    if (ranges->head == NULL) return 1;
     SHOWFILE
-    if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
+    SHOWLINE
     char *line_temp = line;
     int pos = 0;
     Node *temp = ranges->head;
@@ -264,5 +267,32 @@ int displayFinds(char *line, RangeList *ranges, unsigned char flags, int lineNum
     // Seek to EOL
     while(*line_temp != '\0') line_temp++;
     if (*(line_temp - 1) != '\n') printf("\n");     // Print newline if there's no newline in original line
-    return 1;
+    return 0;
+}
+
+int displayInvert(char *line, int lineNum, char showFileName, char *fileName) {
+    SHOWFILE
+    SHOWLINE
+    printf("%s", line);
+    int end = strlen(line) - 1;
+    if (line[end] != '\n') printf("\n");
+    return 0;
+}
+
+int displayFinds(char *line, RangeList *ranges, int lineNum, char showFileName, char *fileName) {
+    if (ranges->head == NULL) return 1;
+    SHOWFILE
+    SHOWLINE
+    
+    Node *temp = ranges->head;
+        
+    while (temp) {
+        Range curr = temp->range;
+        int start = curr.startInd, end = curr.endInd;
+
+        printf(ANSI_COLOR_MAGENTA BOLD UNDERLINE "%.*s\n" ANSI_COLOR_RESET, 
+            end - start + 1, line + start);
+        temp = temp->next;
+    }
+    return 0;
 }

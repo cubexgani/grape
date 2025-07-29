@@ -7,10 +7,11 @@ enum FLAGS {
     FIND_COUNT =        1 << 5,
     HELP =              1 << 6,
     INVERT_MATCH =      1 << 7,
+    ONLY_MATCHES =      1 << 8,
 };
 
 struct flagTable;
 
-int parse_flags(unsigned char *, char *);
-int parseLongFlags(unsigned char *, char *);
-void printHelpText(unsigned char);
+int parse_flags(unsigned short *, char *);
+int parseLongFlags(unsigned short *, char *);
+void printHelpText(unsigned short);

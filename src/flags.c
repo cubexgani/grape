@@ -19,12 +19,13 @@ const struct flagTable lookup[] = {
     {'i', "ignore-case", "Ignore case while finding matches", IGNORE_CASE},
     {'n', "line-number", "Shows line number of each line where the regex matches", SHOW_LINE_NUM},
     {'h', "help", "Shows this help text", HELP},
-    {'v', "invert-match", "Print only the non-matching lines", INVERT_MATCH}
+    {'v', "invert-match", "Prints only the non-matching lines", INVERT_MATCH},
+    {'o', "only-matching", "Prints only the matches", ONLY_MATCHES}
 };
 
 const long tableSize = sizeof(lookup) / sizeof(struct flagTable);
 
-int parse_flags(unsigned char *flags, char *content) {
+int parse_flags(unsigned short *flags, char *content) {
     // This is a long form flag now
     if (content[0] == '-') return parseLongFlags(flags, content + 1);
     // Othewise, a shorthand flag
@@ -56,6 +57,9 @@ int parse_flags(unsigned char *flags, char *content) {
             case 'v':
                 *flags |= INVERT_MATCH;
                 break;
+            case 'o':
+                *flags |= ONLY_MATCHES;
+                break;
             default:
                 printf(ERROR("Invalid option: %c"), ch);
                 return 1;
@@ -64,7 +68,7 @@ int parse_flags(unsigned char *flags, char *content) {
     return 0;
 }
 
-void printHelpText(unsigned char flags) {
+void printHelpText(unsigned short flags) {
     char warning = !(flags & HELP);
     //First, the usage
     if (warning) printf(ANSI_COLOR_YELLOW);
@@ -89,7 +93,7 @@ void printHelpText(unsigned char flags) {
 
 }
 
-int parseLongFlags(unsigned char *flags, char *content) {
+int parseLongFlags(unsigned short *flags, char *content) {
     for (int i = 0; i < tableSize; i++) {
         // If content equals any of the longhands
         if (!strcmp(content, lookup[i].longhand)) {
