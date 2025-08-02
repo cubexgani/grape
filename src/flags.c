@@ -20,7 +20,9 @@ const struct flagTable lookup[] = {
     {'n', "line-number", "Shows line number of each line where the regex matches", SHOW_LINE_NUM},
     {'h', "help", "Shows this help text", HELP},
     {'v', "invert-match", "Prints only the non-matching lines", INVERT_MATCH},
-    {'o', "only-matching", "Prints only the matches", ONLY_MATCHES}
+    {'o', "only-matching", "Prints only the matches", ONLY_MATCHES},
+    {'l', "files-with-matches", "Prints only the files with matches in them", ONLY_MATCHING_FILES},
+    {'L', "files-without-match", "Prints only the files without any match", ONLY_NON_MATCHING_FILES},
 };
 
 const long tableSize = sizeof(lookup) / sizeof(struct flagTable);
@@ -59,6 +61,15 @@ int parse_flags(unsigned short *flags, char *content) {
                 break;
             case 'o':
                 *flags |= ONLY_MATCHES;
+                break;
+            case 'l':
+                // If one option is set, unset the other
+                *flags &= ~ONLY_NON_MATCHING_FILES;
+                *flags |= ONLY_MATCHING_FILES;
+                break;
+            case 'L':
+                *flags &= ~ONLY_MATCHING_FILES;
+                *flags |= ONLY_NON_MATCHING_FILES;
                 break;
             default:
                 printf(ERROR("Invalid option: %c"), ch);

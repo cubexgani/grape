@@ -10,8 +10,7 @@
 #include "../include/logging.h"
 
 // Can't really decide between whether this should be a macro or a function lol
-#define SHOWFILE if (showFileName) printf(ANSI_COLOR_GREEN "%s: " ANSI_COLOR_RESET, fileName);
-#define SHOWLINE if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d: " ANSI_COLOR_RESET, lineNum);
+#define SHOWLINE if (flags & SHOW_LINE_NUM) printf(ANSI_COLOR_BLUE "%d" ANSI_COLOR_RESET ": ", lineNum);
 
 /* A macro for displaying the lines (matching or not matching depending upon the flag)
 or just not doing anything if we just want the find count */
@@ -36,6 +35,7 @@ int grapeRegex(FILE *, char *, char, char *);
 int displayFindLines(char *, RangeList *, int, char, char *);
 int displayFinds(char *, RangeList *, int, char, char *);
 int displayInvert(char *, int, char, char *);
+int displayFileNames(char, char *);
 
 unsigned short flags;
 
@@ -115,9 +115,11 @@ int grape(char **files, int filesLen, char *substr) {
 int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
     int lineNum = 0;
     int findSum = 0;
-    char ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
-    char dispCount = flags & FIND_COUNT;
-    char invertMatch = flags & INVERT_MATCH;
+    unsigned short ignoreCase = flags & IGNORE_CASE;  // Will be either 0 or some non 0 value
+    unsigned short dispCount = flags & FIND_COUNT;
+    unsigned short invertMatch = flags & INVERT_MATCH;
+    unsigned short matchFiles = flags & ONLY_MATCHING_FILES;
+    unsigned short noMatchFiles = flags & ONLY_NON_MATCHING_FILES;
 
     int sublen = strlen(substr);
     
@@ -161,15 +163,28 @@ int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
             Range rng = {i - 1 - sublen, i - 1};
             add(rng, ranges);
         }
-        
-        DISPLAY(line[i - 1])
-
         findSum += ranges->len;
+        
+        if (matchFiles || noMatchFiles) {
+            clear(ranges);
+            continue;
+        }
+
+        DISPLAY(lptr[i - 1]);
         // Empty the linked list before next line rolls in
         clear(ranges);
     }
-    if (dispCount) {
-        SHOWFILE
+    if (matchFiles && findSum > 0) {
+        displayFileNames(1, fileName);
+        printf("\n");
+    }
+    else if (noMatchFiles && findSum == 0) {
+        displayFileNames(1, fileName);
+    }
+    // If -l or -L is set, don't print the count.
+    else if (dispCount) {
+        int sts = displayFileNames(showFileName, fileName);
+        if (!sts) printf(": ");
         printf("Count: %d\n", findSum);
     }
     free(ranges);
@@ -179,10 +194,13 @@ int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
 int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
     regex_t compiled;
 
-    char extended = flags & EXTENDED_REGEX;
-    char ignorecase = flags & IGNORE_CASE;
-    char dispCount = flags & FIND_COUNT;
-    char invertMatch = flags & INVERT_MATCH;
+    unsigned short extended = flags & EXTENDED_REGEX;
+    unsigned short ignorecase = flags & IGNORE_CASE;
+    unsigned short dispCount = flags & FIND_COUNT;
+    unsigned short invertMatch = flags & INVERT_MATCH;
+    unsigned short matchFiles = flags & ONLY_MATCHING_FILES;
+    unsigned short noMatchFiles = flags & ONLY_NON_MATCHING_FILES;
+
     int perms = extended && ignorecase ? REG_EXTENDED | REG_ICASE : 
                 extended ? REG_EXTENDED : ignorecase ? REG_ICASE : 0;
     
@@ -227,16 +245,32 @@ int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
             finOff += currOff;
             // well now the indices are in sorted order
         }
-        
+
         while (*lptr != '\0') lptr++;
+        findSum += ranges->len;
+        
+        // If we just want the file names, don't display the finds; move on
+        if (matchFiles || noMatchFiles) {
+            clear(ranges);
+            continue;
+        }
         DISPLAY(*(lptr - 1));
         
-        findSum += ranges->len;
         clear(ranges);
 
     }
-    if (dispCount) {
-        SHOWFILE
+    
+    if (matchFiles && findSum > 0) {
+        displayFileNames(1, fileName);
+        printf("\n");
+    }
+    else if (noMatchFiles && findSum == 0) {
+        displayFileNames(1, fileName);
+    }
+    // If -l or -L is set, don't print the count.
+    else if (dispCount) {
+        int sts = displayFileNames(showFileName, fileName);
+        if (!sts) printf(": ");
         printf("Count: %d\n", findSum);
     }
     free(ranges);
@@ -247,7 +281,7 @@ int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
 int displayFindLines(char *line, RangeList *ranges, int lineNum, 
     char showFileName, char *fileName) {
     if (ranges->head == NULL) return 1;
-    SHOWFILE
+    if (!displayFileNames(showFileName, fileName)) printf(": ");
     SHOWLINE
     char *line_temp = line;
     int pos = 0;
@@ -271,7 +305,8 @@ int displayFindLines(char *line, RangeList *ranges, int lineNum,
 }
 
 int displayInvert(char *line, int lineNum, char showFileName, char *fileName) {
-    SHOWFILE
+    int sts = displayFileNames(showFileName, fileName);
+    if (!sts) printf(": ");
     SHOWLINE
     printf("%s", line);
     int end = strlen(line) - 1;
@@ -279,13 +314,15 @@ int displayInvert(char *line, int lineNum, char showFileName, char *fileName) {
     return 0;
 }
 
+
 int displayFinds(char *line, RangeList *ranges, int lineNum, char showFileName, char *fileName) {
     if (ranges->head == NULL) return 1;
-    SHOWFILE
+    int sts = displayFileNames(showFileName, fileName);
+    if (!sts) printf(": ");
     SHOWLINE
     
     Node *temp = ranges->head;
-        
+    
     while (temp) {
         Range curr = temp->range;
         int start = curr.startInd, end = curr.endInd;
@@ -294,5 +331,10 @@ int displayFinds(char *line, RangeList *ranges, int lineNum, char showFileName, 
             end - start + 1, line + start);
         temp = temp->next;
     }
+    return 0;
+}
+int displayFileNames(char showFileName, char *fileName) {
+    if (!showFileName) return 1;
+    printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, fileName);
     return 0;
 }
