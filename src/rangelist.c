@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+
 #include "rangelist.h"
 
 // Appends a range to a linked list

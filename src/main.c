@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <ctype.h>
-#include "../include/colors.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../include/rangelist.h"
+#include "rangelist.h"
 #include <regex.h>
-#include "../include/flags.h"
-#include "../include/textformat.h"
-#include "../include/logging.h"
-#include "../include/display.h"
+
+#include "colors.h"
+#include "flags.h"
+#include "textformat.h"
+#include "logging.h"
+#include "display.h"
 
 /* A macro for displaying the lines (matching or not matching depending upon the flag)
 or just not doing anything if we just want the find count */
@@ -101,6 +102,7 @@ int grape(char **files, int filesLen, char *substr) {
             return 1;
         }
         grapeFn(fp, substr, showFileName, filename);
+        fclose(fp);
     }
     return 0;
 }
@@ -124,7 +126,6 @@ int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
     // An 8kb buffer might be overkill, idk
     char line[BUFSIZ];
     while ((fgets(line, BUFSIZ, fp)) != NULL) {
-        // yes 400 is a reasonable limit, I know
         int sind = 0, eind = 0, currInd = 0;
         Range r;
         lineNum++;
@@ -165,6 +166,7 @@ int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
         }
 
         DISPLAY(lptr[i - 1]);
+
         // Empty the linked list before next line rolls in
         clear(ranges);
     }
@@ -175,6 +177,7 @@ int grapeFixed(FILE *fp, char *substr, char showFileName, char *fileName) {
     else if (noMatchFiles && findSum == 0) {
         displayFileNames(1, fileName);
     }
+    
     // If -l or -L is set, don't print the count.
     else if (dispCount) {
         int sts = displayFileNames(showFileName, fileName);
@@ -228,7 +231,7 @@ int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
             matchSts = regexec(&compiled, lptr, subexprs + 1, matches, 0);
             if (matchSts == REG_NOMATCH) break;
 
-            // offset of range wrt char *scope lptr
+            // offset of range wrt char * scope lptr
             int currOff;
             Range r;
             

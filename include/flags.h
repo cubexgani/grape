@@ -1,3 +1,5 @@
+// Include not more than once
+// I could just use include guards by defining macros but I dont want to be unc
 #pragma once
 
 enum FLAGS {
@@ -13,8 +15,6 @@ enum FLAGS {
     ONLY_MATCHING_FILES =   1 << 9,
     ONLY_NON_MATCHING_FILES =   1 << 10,
 };
-
-struct flagTable;
 
 int parse_flags(unsigned short *, char *);
 int parseLongFlags(unsigned short *, char *);

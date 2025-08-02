@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "../include/flags.h"
-#include "../include/colors.h"
-#include "../include/logging.h"
+#include "flags.h"
+#include "colors.h"
+#include "logging.h"
 
 struct flagTable {
     char shorthand;
@@ -27,6 +27,7 @@ const struct flagTable lookup[] = {
 
 const long tableSize = sizeof(lookup) / sizeof(struct flagTable);
 
+// Parses virtually all kinds of flags
 int parse_flags(unsigned short *flags, char *content) {
     // This is a long form flag now
     if (content[0] == '-') return parseLongFlags(flags, content + 1);
@@ -79,6 +80,7 @@ int parse_flags(unsigned short *flags, char *content) {
     return 0;
 }
 
+// Need I say more
 void printHelpText(unsigned short flags) {
     char warning = !(flags & HELP);
     //First, the usage
@@ -104,6 +106,7 @@ void printHelpText(unsigned short flags) {
 
 }
 
+// Parses only longhand flags
 int parseLongFlags(unsigned short *flags, char *content) {
     for (int i = 0; i < tableSize; i++) {
         // If content equals any of the longhands

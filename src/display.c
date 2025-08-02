@@ -1,17 +1,20 @@
-#include "../include/display.h"
-
-#include "../include/colors.h"
-#include "../include/textformat.h"
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "display.h"
+#include "colors.h"
+#include "textformat.h"
 
 // Can't really decide between whether this should be a macro or a function lol
 #define SHOWLINE if (showLineNum) printf(ANSI_COLOR_BLUE "%d" ANSI_COLOR_RESET ": ", lineNum);
 
+// Displays entire lines with the matches highlighted
 int displayFindLines(char *line, RangeList *ranges, unsigned short showLineNum, int lineNum, 
                         char showFileName, char *fileName) {
     if (ranges->head == NULL) return 1;
+
+    // If the file name can be displayed, display it. If it is displayed, print a : afterwards
     if (!displayFileNames(showFileName, fileName)) printf(": ");
     SHOWLINE
     char *line_temp = line;
@@ -35,6 +38,7 @@ int displayFindLines(char *line, RangeList *ranges, unsigned short showLineNum, 
     return 0;
 }
 
+// Displays the lines with no match in them
 int displayInvert(char *line, unsigned short showLineNum, int lineNum, 
                     char showFileName, char *fileName) {
     int sts = displayFileNames(showFileName, fileName);
@@ -46,7 +50,7 @@ int displayInvert(char *line, unsigned short showLineNum, int lineNum,
     return 0;
 }
 
-
+// Displays only the matches
 int displayFinds(char *line, RangeList *ranges, unsigned short showLineNum, int lineNum,
                     char showFileName, char *fileName) {
     if (ranges->head == NULL) return 1;
@@ -66,6 +70,8 @@ int displayFinds(char *line, RangeList *ranges, unsigned short showLineNum, int 
     }
     return 0;
 }
+
+
 int displayFileNames(char showFileName, char *fileName) {
     if (!showFileName) return 1;
     printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, fileName);
