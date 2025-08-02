@@ -1,3 +1,5 @@
+#pragma once
+
 #include "colors.h"
 
 #define ERROR(str) (ANSI_COLOR_RED str ANSI_COLOR_RESET "\n")

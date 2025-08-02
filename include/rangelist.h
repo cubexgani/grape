@@ -1,3 +1,5 @@
+#pragma once
+
 // To hold the range of the finds
 typedef struct {
     int startInd;

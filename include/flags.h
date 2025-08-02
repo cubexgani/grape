@@ -1,3 +1,5 @@
+#pragma once
+
 enum FLAGS {
     FIXED =                 1 << 0,
     BASIC_REGEX =           1 << 1,
