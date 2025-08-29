@@ -7,7 +7,9 @@
 #include "textformat.h"
 
 // Can't really decide between whether this should be a macro or a function lol
-#define SHOWLINE if (showLineNum) printf(ANSI_COLOR_BLUE "%d" ANSI_COLOR_RESET ": ", lineNum);
+#define SHOWLINE if (showLineNum) { \
+     printf("%s%d%s: ", BLUE, lineNum, RESET); \
+}
 
 // Displays entire lines with the matches highlighted
 int displayFindLines(char *line, RangeList *ranges, unsigned short showLineNum, int lineNum, 
@@ -25,8 +27,10 @@ int displayFindLines(char *line, RangeList *ranges, unsigned short showLineNum, 
         Range curr = temp->range;
         int start = curr.startInd, end = curr.endInd, plaintextDistance = start - pos;
 
-        printf("%.*s" ANSI_COLOR_MAGENTA BOLD UNDERLINE "%.*s" ANSI_COLOR_RESET, 
-            plaintextDistance, line_temp, end - start + 1, line_temp + plaintextDistance);
+        printf("%.*s", plaintextDistance, line_temp);
+        printf("%s%s%s", MAGENTA, BOLD, UNDERLINE);
+        printf("%.*s", end - start + 1, line_temp + plaintextDistance);
+        printf("%s", RESET);
         pos = end + 1;
         line_temp = line + pos;
         temp = temp->next;
@@ -63,9 +67,9 @@ int displayFinds(char *line, RangeList *ranges, unsigned short showLineNum, int 
     while (temp) {
         Range curr = temp->range;
         int start = curr.startInd, end = curr.endInd;
-
-        printf(ANSI_COLOR_MAGENTA BOLD UNDERLINE "%.*s\n" ANSI_COLOR_RESET, 
-            end - start + 1, line + start);
+        printf("%s%s%s", MAGENTA, BOLD, UNDERLINE);
+        printf("%.*s\n", end - start + 1, line + start);
+        printf("%s", RESET);
         temp = temp->next;
     }
     return 0;
@@ -74,6 +78,6 @@ int displayFinds(char *line, RangeList *ranges, unsigned short showLineNum, int 
 
 int displayFileNames(char showFileName, char *fileName) {
     if (!showFileName) return 1;
-    printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, fileName);
+    printf("%s%s%s", GREEN, fileName, RESET);
     return 0;
 }

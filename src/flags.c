@@ -4,6 +4,7 @@
 #include "colors.h"
 #include "logging.h"
 
+
 struct flagTable {
     char shorthand;
     char *longhand;
@@ -73,7 +74,7 @@ int parse_flags(unsigned short *flags, char *content) {
                 *flags |= ONLY_NON_MATCHING_FILES;
                 break;
             default:
-                printf(ERROR("Invalid option: %c"), ch);
+                perrorf("Invalid option: %c\n", ch);
                 return 1;
         }
     }
@@ -83,21 +84,23 @@ int parse_flags(unsigned short *flags, char *content) {
 // Need I say more
 void printHelpText(unsigned short flags) {
     char warning = !(flags & HELP);
+
+    // Depending on whether the text to be printed is a usage warning,
+    // the printing function is selected
+    int (*printFn)(const char *restrict, ...) = warning ? pwarnf : printf;
+
     //First, the usage
-    if (warning) printf(ANSI_COLOR_YELLOW);
-    printf("Usage: grape -[");
+    printFn("Usage: grape -[");
     for (int i = 0; i < tableSize; i++) {
-        printf("%c", lookup[i].shorthand);
+        printFn("%c", lookup[i].shorthand);
     }
-    printf("]... PATTERN [FILES]...\n");
+    printFn("]... PATTERN [FILES]...\n");
 
     // Gatekeeping the option details
     if (warning) {
-        printf("Use --help or -h to learn more.\n");
+        printFn("Use --help or -h to learn more.\n");
         return;
     }
-
-    printf(ANSI_COLOR_RESET);
 
     printf("\nOptions:\n");
     for (int i = 0; i < tableSize; i++) {
@@ -115,6 +118,6 @@ int parseLongFlags(unsigned short *flags, char *content) {
             return 0;
         }
     }
-    printf(ERROR("Invalid option: %s"), content);
+    perrorf("Invalid option: %s\n", content);
     return 1;
 }

@@ -1,6 +1,10 @@
 #pragma once
 
 #include "colors.h"
+#include <stdio.h>
 
-#define ERROR(str) (ANSI_COLOR_RED str ANSI_COLOR_RESET "\n")
-#define WARNING(str) (ANSI_COLOR_YELLOW str ANSI_COLOR_RESET "\n")
+void initializeColors();
+void initializeFormats();
+
+int perrorf(const char *restrict format, ...);
+int pwarnf(const char *restrict format, ...);

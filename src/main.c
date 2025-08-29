@@ -31,11 +31,14 @@ int grape(char **, int, char *);
 int grapeFixed(FILE *, char *, char, char *);
 int grapeRegex(FILE *, char *, char, char *);
 
+// A 16 bit character for storing flags as bits
 unsigned short flags;
 
 int main(int argc, char** argv) {
-    // An 8 (effectively 7) bit character for storing flags as bits
-    // unsigned char flags;
+
+    initializeColors();
+    initializeFormats();
+
     int idx = 1;
     // Remember kids, argv[argc] == NULL.
     // And the number of flags in input are variable.
@@ -48,7 +51,7 @@ int main(int argc, char** argv) {
             break;   // end of flags --
         }
         int status = parse_flags(&flags, str + 1);
-        if (status == -1) return 0;
+        if (status) return 0;
     }
     if (flags & HELP) {
         printHelpText(flags);
@@ -58,21 +61,17 @@ int main(int argc, char** argv) {
     char *substring = argv[idx++];
     if (substring == NULL) {
         printHelpText(flags);
-        return 0;
+        return 1;
     }
-    FILE *fp = argv[idx] ? fopen(argv[idx], "r") : stdin;
-    if (fp == NULL) {
-        printf(ERROR("Where the hell is %s twin"), argv[idx]);
-        return -1;
-    }
-    grape(argv + idx, argc - idx, substring);
+
+    return grape(argv + idx, argc - idx, substring);
 }
 
 int grape(char **files, int filesLen, char *substr) {
     char fixed = flags & FIXED;
     char regex = flags & BASIC_REGEX;
     if (fixed && regex) {
-        printf(ERROR("2 conflicting options set at once"));
+        perrorf("2 conflicting options set at once\n");
         return 1;
     }
     // The type of graping depends on the flag ofc
@@ -98,7 +97,7 @@ int grape(char **files, int filesLen, char *substr) {
             filename = "(standard input)";
         }
         if (fp == NULL) {
-            printf(ERROR("Where the hell is %s twin"), files[i]);
+            perrorf("Where the hell is %s twin\n", files[i]);
             return 1;
         }
         grapeFn(fp, substr, showFileName, filename);
@@ -206,7 +205,7 @@ int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
     if (compErr) {
         char errbuf[100];
         regerror(compErr, &compiled, errbuf, sizeof(errbuf));
-        printf(ERROR("%s"), errbuf);
+        perrorf("%s\n", errbuf);
         return 1;
     }
     long subexprs = compiled.re_nsub;
@@ -264,6 +263,7 @@ int grapeRegex(FILE *fp, char *toMatch, char showFileName, char *fileName) {
     }
     else if (noMatchFiles && findSum == 0) {
         displayFileNames(1, fileName);
+        printf("\n");
     }
     // If -l or -L is set, don't print the count.
     else if (dispCount) {
