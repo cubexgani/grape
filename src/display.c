@@ -3,13 +3,10 @@
 #include <string.h>
 
 #include "display.h"
-#include "colors.h"
-#include "textformat.h"
+#include "logging.h"
 
 // Can't really decide between whether this should be a macro or a function lol
-#define SHOWLINE if (showLineNum) { \
-     printf("%s%d%s: ", BLUE, lineNum, RESET); \
-}
+#define SHOWLINE if (showLineNum) printf("%s%d%s: ", BLUE, lineNum, RESET);
 
 // Displays entire lines with the matches highlighted
 int displayFindLines(char *line, RangeList *ranges, unsigned short showLineNum, int lineNum, 

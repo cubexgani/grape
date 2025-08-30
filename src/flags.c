@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "flags.h"
-#include "colors.h"
 #include "logging.h"
 
 

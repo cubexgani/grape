@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 #include "logging.h"
-#include "colors.h"
 
 const char *RED, *GREEN, *YELLOW,
             *BLUE, *MAGENTA, *CYAN, *RESET;
@@ -34,9 +33,10 @@ void initializeFormats() {
 // Display text as error in stderr
 int perrorf(const char *restrict format, ...) {
     va_list args;
+    int fmtNum;
     fprintf(stderr, "%s", RED);
     va_start(args, format);
-    vfprintf(stderr, format, args);
+    fmtNum = vfprintf(stderr, format, args);
     va_end(args);
     fprintf(stderr, "%s", RESET);
     return 0;
@@ -45,10 +45,11 @@ int perrorf(const char *restrict format, ...) {
 // Display text as warning in stderr
 int pwarnf(const char *restrict format, ...) {
     va_list args;
+    int fmtNum;
     fprintf(stderr, "%s", YELLOW);
     va_start(args, format);
-    vfprintf(stderr, format, args);
+    fmtNum = vfprintf(stderr, format, args);
     va_end(args);
     fprintf(stderr, "%s", RESET);
-    return 0;
+    return fmtNum;
 }

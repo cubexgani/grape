@@ -2,12 +2,10 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
-#include "rangelist.h"
 #include <regex.h>
 
-#include "colors.h"
+#include "rangelist.h"
 #include "flags.h"
-#include "textformat.h"
 #include "logging.h"
 #include "display.h"
 
@@ -51,7 +49,7 @@ int main(int argc, char** argv) {
             break;   // end of flags --
         }
         int status = parse_flags(&flags, str + 1);
-        if (status) return 0;
+        if (status) return 1;
     }
     if (flags & HELP) {
         printHelpText(flags);

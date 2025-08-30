@@ -1,7 +1,11 @@
 #pragma once
 
-#include "colors.h"
-#include <stdio.h>
+// The colors
+extern const char *RED, *GREEN, *YELLOW,
+            *BLUE, *MAGENTA, *CYAN, *RESET;
+
+// The typefaces
+extern const char *BOLD, *UNDERLINE, *DARK;
 
 void initializeColors();
 void initializeFormats();
