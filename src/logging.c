@@ -39,7 +39,7 @@ int perrorf(const char *restrict format, ...) {
     fmtNum = vfprintf(stderr, format, args);
     va_end(args);
     fprintf(stderr, "%s", RESET);
-    return 0;
+    return fmtNum;
 }
 
 // Display text as warning in stderr

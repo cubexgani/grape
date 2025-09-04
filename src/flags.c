@@ -101,9 +101,9 @@ void printHelpText(unsigned short flags) {
         return;
     }
 
-    printf("\nOptions:\n");
+    printFn("\nOptions:\n");
     for (int i = 0; i < tableSize; i++) {
-        printf("-%c, --%s: %s\n", lookup[i].shorthand, lookup[i].longhand, lookup[i].desc);
+        printFn("-%c, --%s: %s\n", lookup[i].shorthand, lookup[i].longhand, lookup[i].desc);
     }
 
 }
